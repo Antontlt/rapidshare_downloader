@@ -128,6 +128,7 @@ sub rapidGet {
     if ($url =~ /depositfiles\.com/) {
         return depositGet($url);
     }
+
     # parse url
     if ($url !~ /rapidshare\.com(.*)$/) { return 50000; }
     my $location = $1;
