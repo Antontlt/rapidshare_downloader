@@ -35,6 +35,7 @@ GetOptions(
 pod2usage(-exitstatus => 0, -verbose => 2) if $params{help};
 
 if ($params{proxy}) {
+    $ENV{HTTP_PROXY} = $params{proxy};
     $wget .= " -e http_proxy=$params{proxy} --proxy";
 }
 
@@ -73,11 +74,15 @@ while ($all =~ m!(http://(www.)?depositfiles\.com/files/.*?)(["\n\s]|$)!gs) {
     my $url = $1;
     if (hardGet($url)) { push(@failed, $url); }
 }
+while ($all =~ m!(http://(.*)oper.ru/.*?)(["\n\s]|$)!gs) {
+    my $url = $1;
+    if (operVideoGet($url)) { push(@failed, $url); }
+}
 print("FAILED URLS: ", scalar(@failed), "\n", join("\n", @failed));
 
 sub verb_sleep {
     my $mins = shift;
-    for(my $m =$mins; $m > 0; $m--) {
+    for(my $m = $mins; $m > 0; $m--) {
         print("\rWaiting $m minutes... ");
         sleep(60);
     }
@@ -191,3 +196,28 @@ sub rapidGet {
     return $rc;
 }
 
+sub operVideoGet {
+    my $url = shift;
+    my $rc = 0;
+
+    $mech->get($url);
+# <script type="text/javascript">
+#		var s1 = new SWFObject("http://oper.ru/video/mediaplayer.swf","single","592","340","9.0.115", "#000000");
+#		s1.addParam("allowfullscreen","true"); 
+#		s1.addParam("allowscriptaccess","always"); 
+#		s1.useExpressInstall("http://oper.ru/video/expressinstall.swf");
+#		s1.addVariable("id","iceage3");
+#		s1.addVariable("file","http://oper.ru/video/pl.php?code=iceage3");
+#		s1.addVariable("width","592");
+#		s1.addVariable("height","340");
+#		s1.addVariable("config","http://oper.ru/video/config.xml");
+#		s1.write("iceage3");
+#	</script>
+
+    if ($mech->content =~ m!var s1 = new SWFObject\("http://oper\.ru/video/mediaplayer\.swf".*?s1\.write\("(\w+)"\);[\n\s]+</script>!s) {
+        my $video = "http://static.oper.ru/data/video/small/$1.mp4";
+        print "Getting $video\n";
+        $_ = `$wget -c --referer=$url $video`;
+    }
+
+}
